@@ -1,12 +1,19 @@
+use smol_str::SmolStr;
 use std::fs;
+use std::io;
 use std::path::Path;
 use std::process::ExitCode;
+use std::sync::Arc;
 
 use clap::Parser;
 use colored::Colorize;
 use diffy::{create_patch, PatchFormatter};
+use filesystem::ids::VirtualFile;
 use formatter::{get_formatted_file, FormatterConfig};
-use parser::utils::{get_syntax_root_and_diagnostics_from_file, SimpleParserDatabase};
+use parser::utils::{
+    get_syntax_root_and_diagnostics_from_file, get_syntax_root_and_diagnostics_from_virtual_file,
+    SimpleParserDatabase,
+};
 use utils::logging::init_logging;
 
 /// Format a specific file and return whether it was already correctly formatted.
@@ -109,6 +116,47 @@ fn format_path(
     }
 }
 
+/// Format content read from stdin, write result to stdout and return whether it was already
+/// correctly formatted.
+fn format_stdin(args: &FormatterArgs, config: &FormatterConfig) -> bool {
+    let db_val = SimpleParserDatabase::default();
+    let db = &db_val;
+
+    let content = io::stdin().lines().collect::<Result<Vec<String>, _>>().unwrap().join("\n");
+    let (syntax_root, diagnostics) = get_syntax_root_and_diagnostics_from_virtual_file(
+        db,
+        VirtualFile {
+            parent: None,
+            name: SmolStr::from("stdin"),
+            content: Arc::new(content.clone()),
+        },
+    );
+    // Checks if the inner ParserDiagnostic is empty.
+    if !diagnostics.0.leaves.is_empty() {
+        eprintln!(
+            "{}",
+            format!("A parsing error occurred while formatting content from stdin.").red()
+        );
+        return true;
+    }
+    let formatted_file = get_formatted_file(db, &syntax_root, config.clone());
+
+    if formatted_file == content {
+        print!("{formatted_file}");
+        true
+    } else {
+        if args.check {
+            let patch = create_patch(content.as_str(), &formatted_file);
+            let f = PatchFormatter::new().with_color();
+            println!("Diff:");
+            print!("{}", f.fmt_patch(&patch));
+        } else {
+            print!("{formatted_file}");
+        }
+        false
+    }
+}
+
 /// Checks if the file extension is "cairo".
 /// Should only be called with a file path.
 fn is_cairo_file(file_path: &str) -> bool {
@@ -164,10 +212,16 @@ fn main() -> ExitCode {
     let mut all_correct = true;
     if args.files.is_empty() {
         all_correct = format_path(".", &args, 0, &config);
+    } else if args.files.len() == 1 && args.files[0] == "-" {
+        all_correct = format_stdin(&args, &config);
     } else {
         for file in args.files.iter() {
             all_correct &= format_path(file, &args, 0, &config);
         }
     }
-    if !all_correct && args.check { ExitCode::FAILURE } else { ExitCode::SUCCESS }
+    if !all_correct && args.check {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
+    }
 }

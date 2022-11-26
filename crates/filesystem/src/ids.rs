@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use db_utils::define_short_id;
-use path_clean::PathClean;
 use smol_str::SmolStr;
 
 use crate::db::FilesGroup;
@@ -27,8 +26,8 @@ pub struct VirtualFile {
 }
 define_short_id!(FileId, FileLongId, FilesGroup, lookup_intern_file);
 impl FileId {
-    pub fn new(db: &dyn FilesGroup, path: PathBuf) -> FileId {
-        db.intern_file(FileLongId::OnDisk(path.clean()))
+    pub fn new(db: &dyn FilesGroup, file_long_id: FileLongId) -> FileId {
+        db.intern_file(file_long_id)
     }
     pub fn file_name(self, db: &dyn FilesGroup) -> String {
         match db.lookup_intern_file(self) {
@@ -47,7 +46,7 @@ impl Directory {
     /// Returns a file inside this directory. The file and directory don't necessarily exist on
     /// the file system. These are ids/paths to them.
     pub fn file(&self, db: &dyn FilesGroup, name: SmolStr) -> FileId {
-        FileId::new(db, self.0.join(name.to_string()))
+        FileId::new(db, FileLongId::OnDisk(self.0.join(name.to_string())))
     }
 
     /// Returns a sub directory inside this directory. These directories don't necessarily exist on

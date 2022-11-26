@@ -14,6 +14,7 @@ diffy.workspace = true
 filesystem = { path = "../filesystem" }
 itertools.workspace = true
 log.workspace = true
+path-clean.workspace = true
 parser = { path = "../parser" }
 salsa.workspace = true
 smol_str.workspace = true

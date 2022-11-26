@@ -67,7 +67,7 @@ impl Backend {
     }
     fn file(&self, db: &RootDatabase, uri: Url) -> FileId {
         let path = uri.to_file_path().expect("Only file URIs are supported.");
-        FileId::new(db, path)
+        FileId::new(db, FileLongId::OnDisk(path))
     }
     async fn refresh_diagnostics(&self) {
         let db = self.db().await;

@@ -1,9 +1,9 @@
-use std::path::PathBuf;
-
 use db_utils::Upcast;
 use diagnostics::{Diagnostics, DiagnosticsBuilder};
 use filesystem::db::{init_files_group, FilesDatabase, FilesGroup};
-use filesystem::ids::FileId;
+use filesystem::ids::{FileId, FileLongId, VirtualFile};
+use path_clean::PathClean;
+use std::path::PathBuf;
 use syntax::node::db::{SyntaxDatabase, SyntaxGroup};
 use syntax::node::{SyntaxNode, TypedSyntaxNode};
 
@@ -36,7 +36,16 @@ pub fn get_syntax_root_and_diagnostics_from_file(
     db: &SimpleParserDatabase,
     cairo_filename: &str,
 ) -> (SyntaxNode, Diagnostics<ParserDiagnostic>) {
-    let file_id = FileId::new(db, PathBuf::from(cairo_filename));
+    let file_id = FileId::new(db, FileLongId::OnDisk(PathBuf::from(cairo_filename).clean()));
+    let contents = db.file_content(file_id).unwrap();
+    get_syntax_root_and_diagnostics(db, file_id, contents.as_str())
+}
+
+pub fn get_syntax_root_and_diagnostics_from_virtual_file(
+    db: &SimpleParserDatabase,
+    virtual_file: VirtualFile,
+) -> (SyntaxNode, Diagnostics<ParserDiagnostic>) {
+    let file_id = FileId::new(db, FileLongId::Virtual(virtual_file));
     let contents = db.file_content(file_id).unwrap();
     get_syntax_root_and_diagnostics(db, file_id, contents.as_str())
 }

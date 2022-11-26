@@ -13,6 +13,7 @@ diagnostics = { path = "../diagnostics" }
 filesystem = { path = "../filesystem" }
 itertools.workspace = true
 log.workspace = true
+path-clean.workspace = true
 salsa.workspace = true
 smol_str.workspace = true
 syntax = { path = "../syntax" }
